@@ -20,6 +20,12 @@ OutputDir={#OutputDir}
 OutputBaseFilename=Docling-Stage2B-Offline-Setup
 Compression=lzma2/fast
 SolidCompression=yes
+; Large native ML runtimes and model packs cannot fit into a single Windows EXE.
+; Produce a small Setup.exe plus all local BIN slices. All files together form
+; a self-contained offline installer; the destination PC never downloads data.
+DiskSpanning=yes
+DiskSliceSize=1900000000
+SlicesPerDisk=1
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 DisableProgramGroupPage=yes
