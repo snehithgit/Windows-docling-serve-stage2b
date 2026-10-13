@@ -40,7 +40,7 @@ Write-Host "[3/9] Installing CPU-only PyTorch"
 if ($LASTEXITCODE -ne 0) { throw "CPU PyTorch installation failed" }
 
 Write-Host "[4/9] Installing Docling Serve, Stage-2B, WebView and RAG engine"
-& $py -m pip install --no-cache-dir --prefer-binary "docling-serve[ui]" sentence-transformers pywebview pythonnet -r (Join-Path $stage2b "requirements.txt")
+& $py -m pip install --no-cache-dir --prefer-binary "docling-serve[ui]" "docling[easyocr,rapidocr]" sentence-transformers pywebview pythonnet -r (Join-Path $stage2b "requirements.txt")
 if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed" }
 & $py -m pip check
 if ($LASTEXITCODE -ne 0) { throw "Python dependency conflict" }
