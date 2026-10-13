@@ -94,6 +94,14 @@ def main() -> None:
         asyncio.run(verify_pdf_and_chunking())
         print("PASS: Docling Serve, Stage-2B UI, BGE embeddings, PDF ZIP conversion and HybridChunker", flush=True)
     finally:
+        # Always surface child-service failures in the GitHub Actions output.
+        # Previously the exception only said "see %LOCALAPPDATA% logs", which
+        # are destroyed when the hosted runner exits.
+        for name in ("docling", "embedding", "stage2b"):
+            log_path = launcher.LOG / (name + ".log")
+            if log_path.exists():
+                print("\n======== " + name.upper() + " SERVICE LOG (tail) ========", flush=True)
+                print(log_path.read_bytes()[-18000:].decode("utf-8", errors="replace"), flush=True)
         launcher.stop_services()
 
 
