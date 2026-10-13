@@ -1,0 +1,70 @@
+name: Build Windows Offline Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/build-windows.yml"
+      - "README.md"
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docling-windows-installer
+  cancel-in-progress: false
+
+jobs:
+  windows-installer:
+    name: Windows x64 - bundle, test, package
+    runs-on: windows-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout independent installer project
+        uses: actions/checkout@v4
+
+      - name: Show runner prerequisites
+        run: |
+          Write-Host "OS: $([Environment]::OSVersion.VersionString)"
+          Get-PSDrive C
+          nuget help | Select-Object -First 4
+          $iscc = Join-Path ([Environment]::GetFolderPath("ProgramFilesX86")) "Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw "Inno Setup 6 not installed on runner" }
+          Write-Host "Inno Setup found: $iscc"
+
+      - name: Build and smoke-test complete offline installer
+        run: ./windows/build.ps1
+
+      - name: Installer hash and size
+        run: |
+          $file = "./dist/Docling-Stage2B-Offline-Setup.exe"
+          if (!(Test-Path $file)) { throw "Missing expected offline installer" }
+          Get-Item $file | Select-Object Name,Length
+          (Get-FileHash $file -Algorithm SHA256).Hash | Set-Content "./dist/SHA256.txt"
+
+      - name: Upload installer for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: Docling-Stage2B-Windows-x64-Offline
+          path: |
+            dist/Docling-Stage2B-Offline-Setup.exe
+            dist/SHA256.txt
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Publish release assets when a GitHub release is published
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Docling-Stage2B-Offline-Setup.exe
+            dist/SHA256.txt
+          fail_on_unmatched_files: true
