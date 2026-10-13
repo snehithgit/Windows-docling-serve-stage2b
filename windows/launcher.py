@@ -37,7 +37,7 @@ def environment() -> dict[str, str]:
         "OMP_NUM_THREADS": str(min(os.cpu_count() or 2, 4)),
     })
     # The source backend is not installed globally. Keep it isolated.
-    env["PYTHONPATH"] = str(ROOT / "stage2b")
+    env["PYTHONPATH"] = os.pathsep.join([str(ROOT), str(ROOT / "stage2b")])
     return env
 
 
