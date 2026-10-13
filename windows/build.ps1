@@ -27,7 +27,7 @@ New-Item -ItemType Directory -Force -Path $nugetRoot | Out-Null
 nuget install python -Version 3.11.9 -OutputDirectory $nugetRoot -ExcludeVersion -NonInteractive
 if ($LASTEXITCODE -ne 0) { throw "Python NuGet acquisition failed" }
 $tools = Join-Path $nugetRoot "python\tools"
-if (-not (Test-Path (Join-Path $tools "python.exe"))) { throw "Portable Python runtime missing" }
+if (-not (Test-Path (Join-Path $tools "python.exe")) -or -not (Test-Path (Join-Path $tools "pythonw.exe"))) { throw "Portable Python runtime missing" }
 Copy-Item -Path (Join-Path $tools "*") -Destination $runtime -Recurse -Force
 $py = Join-Path $runtime "python.exe"
 & $py -m ensurepip --upgrade
@@ -85,7 +85,7 @@ if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notm
 }
 $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path $csc)) { throw "C# desktop launcher compiler not found" }
-& $csc /nologo /target:winexe /r:System.Windows.Forms.dll /out:"$payload\DoclingStage2B.exe" (Join-Path $root "windows\DoclingStage2B.cs")
+& $csc /nologo /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:"$payload\DoclingStage2B.exe" (Join-Path $root "windows\DoclingStage2B.cs")
 if ($LASTEXITCODE -ne 0) { throw "Desktop launcher compile failed" }
 
 Write-Host "[8/9] Verifying offline services, conversion and embedding"
