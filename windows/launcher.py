@@ -34,6 +34,13 @@ def environment() -> dict[str, str]:
         "DOCLING_SERVE_SCRATCH_PATH": str(DATA / "scratch"),
         "DOCLING_SERVE_ENG_KIND": "local",
         "PYTHONUNBUFFERED": "1",
+        # The official Docling Serve CLI prints Unicode (including emoji) on
+        # startup; redirected Windows subprocess output otherwise defaults to
+        # cp1252, raises UnicodeEncodeError, and exits before port 5001 opens.
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+        "NO_COLOR": "1",
+        "TERM": "dumb",
         "OMP_NUM_THREADS": str(min(os.cpu_count() or 2, 4)),
     })
     # The source backend is not installed globally. Keep it isolated.
