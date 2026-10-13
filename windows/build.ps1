@@ -91,6 +91,8 @@ if ($LASTEXITCODE -ne 0) { throw "Desktop launcher compile failed" }
 Write-Host "[8/9] Verifying offline services, conversion and embedding"
 $env:HF_HUB_OFFLINE = "1"
 $env:TRANSFORMERS_OFFLINE = "1"
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
 $env:DOCLING_SERVE_ARTIFACTS_PATH = Join-Path $models "docling"
 $env:PYTHONPATH = $payload
 & $py (Join-Path $root "windows\smoke_test.py") $payload
