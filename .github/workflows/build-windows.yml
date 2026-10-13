@@ -42,20 +42,29 @@ jobs:
       - name: Build and smoke-test complete offline installer
         run: ./windows/build.ps1
 
-      - name: Installer hash and size
+      - name: Verify all offline installer volumes and write integrity manifest
         run: |
-          $file = "./dist/Docling-Stage2B-Offline-Setup.exe"
-          if (!(Test-Path $file)) { throw "Missing expected offline installer" }
-          Get-Item $file | Select-Object Name,Length
-          (Get-FileHash $file -Algorithm SHA256).Hash | Set-Content "./dist/SHA256.txt"
+          $parts = @(Get-ChildItem -Path "./dist" -File | Where-Object { $_.Extension -in @(".exe", ".bin") } | Sort-Object Name)
+          $setup = $parts | Where-Object { $_.Name -eq "Docling-Stage2B-Offline-Setup.exe" }
+          $slices = @($parts | Where-Object { $_.Extension -eq ".bin" })
+          if (-not $setup -or $slices.Count -lt 1) {
+            throw "Missing Setup.exe or offline BIN slices. A partial installer must never be published."
+          }
+          $manifest = @($parts | ForEach-Object {
+            if ($_.Length -le 0) { throw "Empty installer file: $($_.Name)" }
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+            Write-Host ("{0}: {1:N2} GiB" -f $_.Name, ($_.Length / 1GB))
+            "$hash  $($_.Name)"
+          })
+          $manifest | Set-Content "./dist/SHA256SUMS.txt" -Encoding ascii
 
       - name: Upload installer for download
         uses: actions/upload-artifact@v4
         with:
           name: Docling-Stage2B-Windows-x64-Offline
-          path: |
-            dist/Docling-Stage2B-Offline-Setup.exe
-            dist/SHA256.txt
+          path: dist/*
+          # One downloadable GitHub artifact ZIP contains Setup.exe + all BIN
+          # volumes. Extract them together for installation without internet.
           retention-days: 7
           compression-level: 0
           if-no-files-found: error
@@ -64,7 +73,5 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/Docling-Stage2B-Offline-Setup.exe
-            dist/SHA256.txt
+          files: dist/*
           fail_on_unmatched_files: true
