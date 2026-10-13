@@ -105,4 +105,13 @@ if (-not (Test-Path $iscc)) { throw "Inno Setup 6 is missing" }
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
 $installer = Join-Path $dist "Docling-Stage2B-Offline-Setup.exe"
 if (-not (Test-Path $installer)) { throw "Offline installer was not produced" }
-Write-Host "SUCCESS: $installer"
+# ML dependencies exceed Windows' single-EXE size limit. Inno Setup emits
+# .bin slices containing the models; they are MANDATORY at install time.
+$slices = @(Get-ChildItem -Path $dist -File -Filter "Docling-Stage2B-Offline-Setup-*.bin")
+if ($slices.Count -eq 0) { throw "Disk spanning was enabled but no BIN data slices were produced" }
+$parts = @((Get-Item $installer)) + $slices
+foreach ($part in $parts) {
+    if ($part.Length -lt 1) { throw "Empty installer part: $($part.Name)" }
+    Write-Host ("Installer part: {0} ({1:N2} GB)" -f $part.Name, ($part.Length / 1GB))
+}
+Write-Host ("SUCCESS: {0} offline installer parts. Keep EXE and all BIN files together." -f $parts.Count)
