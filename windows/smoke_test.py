@@ -87,22 +87,33 @@ def test_embedding() -> None:
 
 
 def main() -> None:
+    # The Windows CI runner defaults stdout to cp1252; subprocesses emit UTF-8.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     print("Smoke testing WITH HF_HUB_OFFLINE=1 and TRANSFORMERS_OFFLINE=1", flush=True)
+    passed = False
     try:
         launcher.start_services(lambda msg: print(msg, flush=True))
         test_embedding()
         asyncio.run(verify_pdf_and_chunking())
+        passed = True
         print("PASS: Docling Serve, Stage-2B UI, BGE embeddings, PDF ZIP conversion and HybridChunker", flush=True)
     finally:
-        # Always surface child-service failures in the GitHub Actions output.
-        # Previously the exception only said "see %LOCALAPPDATA% logs", which
-        # are destroyed when the hosted runner exits.
-        for name in ("docling", "embedding", "stage2b"):
-            log_path = launcher.LOG / (name + ".log")
-            if log_path.exists():
-                print("\n======== " + name.upper() + " SERVICE LOG (tail) ========", flush=True)
-                print(log_path.read_bytes()[-18000:].decode("utf-8", errors="replace"), flush=True)
-        launcher.stop_services()
+        try:
+            if not passed:
+                # Capture logs only on failure; encode output robustly on
+                # Windows and never let log printing skip subprocess cleanup.
+                for name in ("docling", "embedding", "stage2b"):
+                    log_path = launcher.LOG / (name + ".log")
+                    if log_path.exists():
+                        try:
+                            print("\n======== " + name.upper() + " SERVICE LOG (tail) ========", flush=True)
+                            tail = log_path.read_bytes()[-18000:].decode("utf-8", errors="backslashreplace")
+                            print(tail, flush=True)
+                        except Exception as exc:
+                            print("Could not print " + name + " log: " + repr(exc), flush=True)
+        finally:
+            launcher.stop_services()
 
 
 if __name__ == "__main__":
