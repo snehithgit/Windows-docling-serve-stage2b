@@ -149,30 +149,18 @@ def stop_services() -> None:
 
 
 def main() -> int:
-    import tkinter as tk
-    from tkinter import messagebox
+    import ctypes
 
     DATA.mkdir(parents=True, exist_ok=True)
-    splash = tk.Tk()
-    splash.title("Docling Stage-2B")
-    splash.geometry("490x160")
-    splash.resizable(False, False)
-    splash.configure(bg="#122037")
-    header = tk.Label(splash, text="Docling Stage-2B", font=("Segoe UI", 21, "bold"),
-                      fg="#ffffff", bg="#122037")
-    header.pack(padx=20, pady=(24, 8))
-    status = tk.StringVar(value="Checking offline services...")
-    label = tk.Label(splash, textvariable=status, font=("Segoe UI", 11),
-                     fg="#b3c5e5", bg="#122037")
-    label.pack(pady=5)
+    state_path = DATA / "startup.status"
 
-    def progress(msg):
-        status.set(msg)
-        splash.update()
+    def progress(msg: str) -> None:
+        # Read by the native C# launcher; no tkinter dependency in NuGet Python.
+        state_path.write_text(msg, encoding="utf-8")
 
+    progress("Initializing offline services...")
     try:
         start_services(progress)
-        splash.destroy()
         import webview
         webview.create_window(
             "Docling Stage-2B · Offline",
@@ -180,23 +168,21 @@ def main() -> int:
             width=1480, height=940, min_size=(980, 650),
             confirm_close=True,
         )
+        progress("READY")
         webview.start(gui="edgechromium", debug=False, private_mode=True)
         return 0
     except Exception as exc:
         logging.exception("Unable to start Docling desktop services")
+        progress("ERROR: " + str(exc))
         try:
-            messagebox.showerror("Docling Stage-2B - Startup error",
-                                 str(exc) + "\n\nLogs: " + str(LOG))
+            ctypes.windll.user32.MessageBoxW(
+                None, str(exc) + "\n\nLogs: " + str(LOG),
+                "Docling Stage-2B - Startup error", 0x10)
         except Exception:
             pass
         return 1
     finally:
         stop_services()
-        try:
-            if splash.winfo_exists():
-                splash.destroy()
-        except Exception:
-            pass
 
 
 if __name__ == "__main__":
